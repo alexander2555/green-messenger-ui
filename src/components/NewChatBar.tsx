@@ -5,17 +5,19 @@ import styles from './NewChatBar.module.css'
 interface NewChatBarProps {
   /** Callback при создании чата: (phoneNumber) => void */
   onCreateChat: (phoneNumber: string) => void
+  /** Тип провайдера для валидации номера */
+  provider: 'max' | 'whatsapp' | 'telegram'
 }
 
 /** Компонент для ввода номера телефона и создания нового чата.
- * Валидирует формат номера (RU +7 или BY +375 для MAX).
+ * Валидирует формат номера в зависимости от провайдера.
  */
-export default function NewChatBar({ onCreateChat }: NewChatBarProps) {
+export default function NewChatBar({ onCreateChat, provider }: NewChatBarProps) {
   const [phoneNumber, setPhoneNumber] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  /** Валидация номера телефона для MAX */
+  /** Валидация номера телефона в зависимости от провайдера */
   const validatePhone = useCallback((value: string): string | null => {
     const cleaned = value.replace(/\D/g, '')
 
@@ -23,23 +25,46 @@ export default function NewChatBar({ onCreateChat }: NewChatBarProps) {
       return 'Введите номер телефона'
     }
 
-    // MAX поддерживает только RU (7) и BY (375)
-    if (cleaned.startsWith('7')) {
-      if (cleaned.length !== 11) {
-        return 'Номер России должен содержать 11 цифр (7XXXXXXXXXX)'
+    if (provider === 'max') {
+      // MAX поддерживает только RU (7) и BY (375)
+      if (cleaned.startsWith('7')) {
+        if (cleaned.length !== 11) {
+          return 'Номер России должен содержать 11 цифр (7XXXXXXXXXX)'
+        }
+        return null
       }
-      return null
+
+      if (cleaned.startsWith('375')) {
+        if (cleaned.length !== 12) {
+          return 'Номер Беларуси должен содержать 12 цифр (375XXXXXXXXX)'
+        }
+        return null
+      }
+
+      return 'Для MAX поддерживаются только номера России (+7) и Беларуси (+375)'
     }
 
-    if (cleaned.startsWith('375')) {
-      if (cleaned.length !== 12) {
-        return 'Номер Беларуси должен содержать 12 цифр (375XXXXXXXXX)'
-      }
-      return null
+    // WhatsApp и Telegram: любой международный формат (E.164)
+    // Минимум 10 цифр (код страны + номер)
+    if (cleaned.length < 10) {
+      return 'Номер слишком короткий. Введите в международном формате (например, 79001234567)'
     }
 
-    return 'Для MAX поддерживаются только номера России (+7) и Беларуси (+375)'
-  }, [])
+    return null
+  }, [provider])
+
+  /** Текст подсказки в зависимости от провайдера */
+  const placeholderText = provider === 'max'
+    ? '+7 (XXX) XXX-XX-XX'
+    : '+<код страны><номер>'
+
+  const helperText = provider === 'max'
+    ? 'Формат: +7XXXXXXXXXX (Россия) или +375XXXXXXXXX (Беларусь)'
+    : 'Формат: цифры с кодом страны без + (например, 79001234567 для РФ, 15551234567 для США)'
+
+  const formatHint = provider === 'max'
+    ? 'Убедитесь, что у получателя установлен MAX и номер зарегистрирован в GREEN-API'
+    : `Убедитесь, что у получателя установлен ${provider.toUpperCase()} и номер зарегистрирован в GREEN-API`
 
   /** Обработка изменения ввода */
   const handleChange = useCallback(
@@ -83,7 +108,7 @@ export default function NewChatBar({ onCreateChat }: NewChatBarProps) {
 
       <h2 className={styles.title}>Новый чат</h2>
       <p className={styles.description}>
-        Введите номер телефона получателя, чтобы начать переписку в MAX
+        Введите номер телефона получателя, чтобы начать переписку в {provider.toUpperCase()}
       </p>
 
       <form onSubmit={handleSubmit} className={styles.form} noValidate>
@@ -97,7 +122,7 @@ export default function NewChatBar({ onCreateChat }: NewChatBarProps) {
             className={`${styles.input} ${error ? styles.inputError : ''}`}
             value={phoneNumber}
             onChange={handleChange}
-            placeholder="+7 (XXX) XXX-XX-XX"
+            placeholder={placeholderText}
             disabled={isSubmitting}
             aria-describedby={error ? 'phone-error' : 'phone-hint'}
             aria-invalid={!!error}
@@ -110,7 +135,7 @@ export default function NewChatBar({ onCreateChat }: NewChatBarProps) {
             </p>
           ) : (
             <p id="phone-hint" className={styles.helperText}>
-              Формат: +7XXXXXXXXXX (Россия) или +375XXXXXXXXX (Беларусь)
+              {helperText}
             </p>
           )}
         </div>
@@ -121,7 +146,7 @@ export default function NewChatBar({ onCreateChat }: NewChatBarProps) {
       </form>
 
       <p className={styles.formatHint}>
-        Убедитесь, что у получателя установлен MAX и номер зарегистрирован в GREEN-API
+        {formatHint}
       </p>
     </div>
   )

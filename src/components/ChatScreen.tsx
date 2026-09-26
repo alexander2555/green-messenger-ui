@@ -108,7 +108,8 @@ export default function ChatScreen() {
         })
 
         if (!response.exist) {
-          throw new Error('Аккаунт не найден в MAX. Проверьте номер телефона.')
+          const providerName = activeConnection?.provider.toUpperCase() ?? 'MAX'
+          throw new Error(`Аккаунт не найден в ${providerName}. Проверьте номер телефона.`)
         }
 
         // Успех — переходим в режим чата
@@ -245,7 +246,7 @@ export default function ChatScreen() {
           </div>
         </header>
         <div className={styles.messagesArea}>
-          <NewChatBar onCreateChat={handleCreateChat} />
+          <NewChatBar onCreateChat={handleCreateChat} provider={activeConnection?.provider ?? 'max'} />
         </div>
       </div>
     )
