@@ -1,11 +1,11 @@
-import { useState, useCallback, useMemo } from 'react'
+import React, { useState, useCallback, useMemo } from 'react'
 import { useConnections } from '../context/ConnectionsContext'
 import styles from './ProviderSettingsScreen.module.css'
 
 /** Типы мессенджеров, доступные для выбора */
 const MESSENGER_OPTIONS = [
   { value: 'max' as const, label: 'MAX' },
-  { value: 'whatsapp' as const, label: 'WhatsApp (soon)' },
+  { value: 'whatsapp' as const, label: 'WhatsApp' },
   { value: 'telegram' as const, label: 'Telegram (soon)' },
 ] as const
 
@@ -130,8 +130,8 @@ export function ProviderSettingsScreen() {
     [setActiveConnection],
   )
 
-  // Проверка, доступен ли выбранный провайдер (пока только MAX)
-  const isProviderAvailable = useMemo(() => provider === 'max', [provider])
+  // Проверка, доступен ли выбранный провайдер (MAX и WhatsApp)
+  const isProviderAvailable = useMemo(() => provider === 'max' || provider === 'whatsapp', [provider])
 
   return (
     <div className={styles.container}>
@@ -178,7 +178,7 @@ export function ProviderSettingsScreen() {
                   <option
                     key={opt.value}
                     value={opt.value}
-                    disabled={opt.value !== 'max'}
+                    disabled={opt.value === 'telegram'}
                   >
                     {opt.label}
                   </option>
@@ -193,9 +193,9 @@ export function ProviderSettingsScreen() {
                   {errors.provider}
                 </p>
               )}
-              {!isProviderAvailable && (
+              {(provider as string) === 'telegram' && (
                 <p className={styles.helperText}>
-                  Пока доступен только MAX. WhatsApp и Telegram — в разработке.
+                  Telegram — в разработке.
                 </p>
               )}
             </div>
