@@ -160,7 +160,9 @@ export function createProvider(
       return new TelegramProvider(apiUrl, idInstance, apiTokenInstance)
     default:
       // TypeScript exhaustive check — если добавлен новый тип без обработки, будет ошибка компиляции
-      const _exhaustive: never = type
-      throw new Error(`Unknown provider type: ${_exhaustive}`)
+      {
+        const _exhaustive: never = type
+        throw new Error(`Unknown provider type: ${_exhaustive}`)
+      }
   }
 }
