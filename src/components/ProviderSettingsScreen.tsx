@@ -31,7 +31,8 @@ export function ProviderSettingsScreen() {
   } = useConnections()
 
   // Состояние формы добавления
-  const [provider, setProvider] = useState<typeof MESSENGER_OPTIONS[0]['value']>('max')
+  const [provider, setProvider] =
+    useState<(typeof MESSENGER_OPTIONS)[0]['value']>('max')
   const [apiUrl, setApiUrl] = useState('')
   const [idInstance, setIdInstance] = useState('')
   const [apiTokenInstance, setApiTokenInstance] = useState('')
@@ -47,7 +48,8 @@ export function ProviderSettingsScreen() {
     }
 
     if (!apiUrl.trim()) {
-      newErrors.apiUrl = 'Введите apiUrl (например, https://3100.api.green-api.com)'
+      newErrors.apiUrl =
+        'Введите apiUrl (например, https://3100.api.green-api.com)'
     } else {
       try {
         const url = new URL(apiUrl)
@@ -99,7 +101,15 @@ export function ProviderSettingsScreen() {
         setIsSubmitting(false)
       }
     },
-    [provider, apiUrl, idInstance, apiTokenInstance, validateForm, addConnection, setActiveConnection],
+    [
+      provider,
+      apiUrl,
+      idInstance,
+      apiTokenInstance,
+      validateForm,
+      addConnection,
+      setActiveConnection,
+    ],
   )
 
   /** Удаление подключения с подтверждением */
@@ -121,10 +131,7 @@ export function ProviderSettingsScreen() {
   )
 
   // Проверка, доступен ли выбранный провайдер (пока только MAX)
-  const isProviderAvailable = useMemo(
-    () => provider === 'max',
-    [provider],
-  )
+  const isProviderAvailable = useMemo(() => provider === 'max', [provider])
 
   return (
     <div className={styles.container}>
@@ -137,13 +144,17 @@ export function ProviderSettingsScreen() {
       {/* Main Content */}
       <main className={styles.main} role="main">
         {/* Add Connection Form */}
-        <section className={styles.section} aria-labelledby="add-connection-title">
+        <section
+          className={styles.section}
+          aria-labelledby="add-connection-title"
+        >
           <h2 id="add-connection-title" className={styles.sectionTitle}>
             Добавить подключение
           </h2>
           <p className={styles.sectionDescription}>
-            Введите учётные данные GREEN-API. Настройте приём уведомлений в личном кабинете
-            GREEN-API: <code>webhookUrl</code> пуст, <code>incomingWebhook = yes</code>.
+            Введите учётные данные GREEN-API. Настройте приём уведомлений в
+            личном кабинете GREEN-API: <code>webhookUrl</code> пуст,{' '}
+            <code>incomingWebhook = yes</code>.
           </p>
 
           <form onSubmit={handleSubmit} className={styles.form} noValidate>
@@ -156,19 +167,29 @@ export function ProviderSettingsScreen() {
                 id="provider"
                 className={styles.select}
                 value={provider}
-                onChange={(e) => setProvider(e.target.value as typeof provider)}
+                onChange={e => setProvider(e.target.value as typeof provider)}
                 disabled={isSubmitting}
-                aria-describedby={errors.provider ? 'provider-error' : undefined}
+                aria-describedby={
+                  errors.provider ? 'provider-error' : undefined
+                }
                 aria-invalid={!!errors.provider}
               >
-                {MESSENGER_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value} disabled={opt.value !== 'max'}>
+                {MESSENGER_OPTIONS.map(opt => (
+                  <option
+                    key={opt.value}
+                    value={opt.value}
+                    disabled={opt.value !== 'max'}
+                  >
                     {opt.label}
                   </option>
                 ))}
               </select>
               {errors.provider && (
-                <p id="provider-error" className={styles.errorText} role="alert">
+                <p
+                  id="provider-error"
+                  className={styles.errorText}
+                  role="alert"
+                >
                   {errors.provider}
                 </p>
               )}
@@ -189,10 +210,12 @@ export function ProviderSettingsScreen() {
                 type="url"
                 className={`${styles.input} ${errors.apiUrl ? styles.inputError : ''}`}
                 value={apiUrl}
-                onChange={(e) => setApiUrl(e.target.value)}
+                onChange={e => setApiUrl(e.target.value)}
                 placeholder="https://3100.api.green-api.com"
                 disabled={isSubmitting}
-                aria-describedby={errors.apiUrl ? 'apiurl-error' : 'apiurl-hint'}
+                aria-describedby={
+                  errors.apiUrl ? 'apiurl-error' : 'apiurl-hint'
+                }
                 aria-invalid={!!errors.apiUrl}
                 autoComplete="off"
               />
@@ -218,15 +241,21 @@ export function ProviderSettingsScreen() {
                   type="text"
                   className={`${styles.input} ${errors.idInstance ? styles.inputError : ''}`}
                   value={idInstance}
-                  onChange={(e) => setIdInstance(e.target.value)}
+                  onChange={e => setIdInstance(e.target.value)}
                   placeholder="310022747717"
                   disabled={isSubmitting}
-                  aria-describedby={errors.idInstance ? 'idinstance-error' : 'idinstance-hint'}
+                  aria-describedby={
+                    errors.idInstance ? 'idinstance-error' : 'idinstance-hint'
+                  }
                   aria-invalid={!!errors.idInstance}
                   autoComplete="off"
                 />
                 {errors.idInstance && (
-                  <p id="idinstance-error" className={styles.errorText} role="alert">
+                  <p
+                    id="idinstance-error"
+                    className={styles.errorText}
+                    role="alert"
+                  >
                     {errors.idInstance}
                   </p>
                 )}
@@ -240,10 +269,12 @@ export function ProviderSettingsScreen() {
                   type="password"
                   className={`${styles.input} ${errors.apiTokenInstance ? styles.inputError : ''}`}
                   value={apiTokenInstance}
-                  onChange={(e) => setApiTokenInstance(e.target.value)}
+                  onChange={e => setApiTokenInstance(e.target.value)}
                   placeholder="544239ffa59f44f0afb0a53a43a4f916..."
                   disabled={isSubmitting}
-                  aria-describedby={errors.apiTokenInstance ? 'token-error' : 'token-hint'}
+                  aria-describedby={
+                    errors.apiTokenInstance ? 'token-error' : 'token-hint'
+                  }
                   aria-invalid={!!errors.apiTokenInstance}
                   autoComplete="off"
                 />
@@ -288,28 +319,34 @@ export function ProviderSettingsScreen() {
               </svg>
               <p className={styles.emptyStateTitle}>Нет подключений</p>
               <p className={styles.emptyStateText}>
-                Добавьте первое подключение через форму выше, чтобы начать общение
+                Добавьте первое подключение через форму выше, чтобы начать
+                общение
               </p>
             </div>
           ) : (
             <ul className={styles.connectionsList} role="list">
-              {connections.map((conn) => (
+              {connections.map(conn => (
                 <li
                   key={conn.id}
                   className={`${styles.connectionItem} ${
-                    conn.id === activeConnectionId ? styles.connectionItemActive : ''
+                    conn.id === activeConnectionId
+                      ? styles.connectionItemActive
+                      : ''
                   }`}
                 >
                   <div className={styles.connectionInfo}>
                     <span className={styles.connectionName}>
-                      {conn.name || `${conn.provider.toUpperCase()} (${conn.idInstance.slice(-6)})`}
+                      {conn.name ||
+                        `${conn.provider.toUpperCase()} (${conn.idInstance.slice(-6)})`}
                     </span>
                     <div className={styles.connectionMeta}>
                       <span className={styles.providerBadge}>
                         {conn.provider.toUpperCase()}
                       </span>
                       <span>ID: {conn.idInstance}</span>
-                      <span>API: {conn.apiUrl.replace(/^https?:\/\//, '')}</span>
+                      <span>
+                        API: {conn.apiUrl.replace(/^https?:\/\//, '')}
+                      </span>
                     </div>
                   </div>
                   <div className={styles.connectionActions}>
@@ -336,7 +373,13 @@ export function ProviderSettingsScreen() {
                       </button>
                     )}
                     {conn.id === activeConnectionId && (
-                      <span className={styles.providerBadge} style={{ background: 'var(--color-success)', color: 'white' }}>
+                      <span
+                        className={styles.providerBadge}
+                        style={{
+                          background: 'var(--color-success)',
+                          color: 'white',
+                        }}
+                      >
                         Активно
                       </span>
                     )}
