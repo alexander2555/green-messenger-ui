@@ -1,6 +1,9 @@
 import js from '@eslint/js'
 import globals from 'globals'
 import eslintConfigPrettier from 'eslint-config-prettier'
+import tseslint from 'typescript-eslint'
+import reactPlugin from 'eslint-plugin-react'
+import reactHooksPlugin from 'eslint-plugin-react-hooks'
 
 /** @type {import('eslint').Linter.Config[]} */
 export default [
@@ -11,48 +14,44 @@ export default [
       'api/**',
       'apps/api/**',
       'coverage/**',
-      // Инфраструктура инструментов (не код проекта):
       '.pi/**',
       '.devin/**',
       '.cursor/**',
       '.tmp/**',
     ],
   },
+  ...tseslint.configs.recommended,
   js.configs.recommended,
   {
-    files: ['src/**/*.js'],
+    files: ['src/**/*.{ts,tsx}'],
+    plugins: {
+      react: reactPlugin,
+      'react-hooks': reactHooksPlugin,
+    },
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
       globals: {
         ...globals.browser,
-        /** Bootstrap 5 (глобаль на страницах с bundle) */
         bootstrap: 'readonly',
-        /** Публичный снимок `.env` (whitelist), подставляется Vite `define` при сборке */
         __WORKROOMS_PUBLIC_CONFIG__: 'readonly',
       },
-    },
-    rules: {
-      'no-unused-vars': [
-        'warn',
-        {
-          argsIgnorePattern: '^_',
-          varsIgnorePattern: '^_',
-          caughtErrorsIgnorePattern: '^_',
+      parserOptions: {
+        ecmaFeatures: {
+          jsx: true,
         },
-      ],
+      },
     },
-  },
-  {
-    files: ['backend/**/*.js'],
-    languageOptions: {
-      ecmaVersion: 'latest',
-      sourceType: 'module',
-      globals: {
-        ...globals.node,
+    settings: {
+      react: {
+        version: '18.3',
       },
     },
     rules: {
+      ...reactHooksPlugin.configs.recommended.rules,
+      'react/react-in-jsx-scope': 'off',
+      'react/prop-types': 'off',
+      'react-hooks/set-state-in-effect': 'off',
       'no-unused-vars': [
         'warn',
         {
@@ -64,7 +63,7 @@ export default [
     },
   },
   {
-    files: ['vite.config.js', 'eslint.config.js'],
+    files: ['vite.config.ts', 'eslint.config.js'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
