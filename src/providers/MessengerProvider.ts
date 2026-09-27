@@ -170,25 +170,47 @@ export abstract class GreenApiProvider implements MessengerProvider {
           if (response.receiptId && response.body) {
             const body = response.body
 
+            // Логируем все входящие уведомления для диагностики
+            console.log('[GreenApiProvider] Received notification:', {
+              typeWebhook: body.typeWebhook,
+              typeMessage: body.messageData?.typeMessage,
+              hasText: !!body.messageData?.textMessageData?.textMessage,
+              chatId: body.messageData?.chatId,
+            })
+
             // Фильтруем: только входящие текстовые сообщения
-            if (
-              body.typeWebhook === 'incomingMessageReceived' &&
-              body.messageData?.typeMessage === 'textMessage' &&
-              body.messageData.textMessageData?.textMessage
-            ) {
-              const chatId = body.messageData.chatId
-              const text = body.messageData.textMessageData.textMessage
+            // Поддерживаем разные типы webhook для разных мессенджеров
+            const md = body.messageData
+            const isIncomingText =
+              md != null &&
+              (body.typeWebhook === 'incomingMessageReceived' ||
+                body.typeWebhook === 'incomingMessage') &&
+              md.typeMessage === 'textMessage' &&
+              md.textMessageData?.textMessage != null
+
+            if (isIncomingText && md) {
+              const chatId = md.chatId
+              const text = md.textMessageData!.textMessage
               // GREEN-API возвращает timestamp в секундах, приводим к миллисекундам
-              const timestamp = body.messageData.timestamp * 1000
+              const timestamp = md.timestamp * 1000
 
               onIncomingText(chatId, text, timestamp)
             }
 
             // Всегда подтверждаем получение уведомления (удаляем из очереди)
-            await this.request<DeleteNotificationResponse>(
-              'DELETE',
-              `/deleteNotification/${response.receiptId}`,
-            )
+            try {
+              await this.request<DeleteNotificationResponse>(
+                'DELETE',
+                `/deleteNotification/${response.receiptId}`,
+              )
+            } catch (deleteError) {
+              const errMsg = deleteError instanceof Error ? deleteError.message : String(deleteError)
+              console.error('[GreenApiProvider] deleteNotification failed:', {
+                receiptId: response.receiptId,
+                error: errMsg,
+              })
+              // Не прерываем цикл — пробуем продолжить поллинг
+            }
           }
         } catch (error) {
           if (!stopped) {
