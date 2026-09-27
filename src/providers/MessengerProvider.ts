@@ -27,7 +27,10 @@ export interface MessengerProvider {
 
   /**
    * Проверка существования аккаунта по номеру телефона и получение chatId.
-   * @param request - Номер телефона (в формате 7XXXXXXXXXX или 375XXXXXXXXX для MAX) и флаг force
+   * @param request - Номер телефона в формате, зависящем от провайдера:
+   *   - MAX: 7XXXXXXXXXX (RU) или 375XXXXXXXXX (BY)
+   *   - WhatsApp/Telegram: любой международный E.164 (мин. 10 цифр)
+   *   и флаг force
    * @returns Promise с результатом проверки (exist, chatId, fromCache)
    * @throws Error при сетевой ошибке или ошибке API
    */
@@ -204,7 +207,10 @@ export abstract class GreenApiProvider implements MessengerProvider {
                 `/deleteNotification/${response.receiptId}`,
               )
             } catch (deleteError) {
-              const errMsg = deleteError instanceof Error ? deleteError.message : String(deleteError)
+              const errMsg =
+                deleteError instanceof Error
+                  ? deleteError.message
+                  : String(deleteError)
               console.error('[GreenApiProvider] deleteNotification failed:', {
                 receiptId: response.receiptId,
                 error: errMsg,

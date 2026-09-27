@@ -7,15 +7,15 @@ import type {
 } from '../types'
 
 /**
- * Провайдер для мессенджера MAX через GREEN-API.
- * Реализует конкретные методы API для MAX:
+ * Провайдер для мессенджера Telegram через GREEN-API.
+ * Реализует конкретные методы API для Telegram:
  * - sendMessage: отправка текстового сообщения
- * - checkAccount: проверка номера телефона (только RU +7 и BY +375)
+ * - checkAccount: проверка номера телефона (любой международный формат E.164)
  * Наследует long polling логику от GreenApiProvider.
  */
-export class MaxProvider extends GreenApiProvider {
-  /** Идентификатор провайдера — 'max' */
-  readonly id = 'max' as const
+export class TelegramProvider extends GreenApiProvider {
+  /** Идентификатор провайдера — 'telegram' */
+  readonly id = 'telegram' as const
 
   /**
    * @param apiUrl - Базовый URL инстанса GREEN-API (например, https://3100.api.green-api.com)
@@ -27,7 +27,7 @@ export class MaxProvider extends GreenApiProvider {
   }
 
   /**
-   * Отправка текстового сообщения в MAX.
+   * Отправка текстового сообщения в Telegram.
    * Вызывает POST /sendMessage/ с параметрами chatId, message, typingTime, quotedMessageId.
    *
    * @param request - Параметры сообщения
@@ -44,12 +44,12 @@ export class MaxProvider extends GreenApiProvider {
   }
 
   /**
-   * Проверка существования аккаунта в MAX по номеру телефона.
-   * Вызывает POST /checkAccount/.
-   * ВАЖНО: для MAX поддерживаются только номера RU (код 7, 11 цифр) и BY (код 375, 12 цифр).
-   * Формат: 7XXXXXXXXXX или 375XXXXXXXXX (без +, пробелов, скобок).
+   * Проверка существования аккаунта в Telegram по номеру телефона.
+   * Вызывает POST /checkAccount/ (как для MAX).
+   * Для Telegram поддерживается любой международный формат (E.164).
+   * Формат: цифры с кодом страны, без + и пробелов (например, 79001234567, 15551234567).
    *
-   * @param request - phoneNumber в описанном формате, опционально force=true для принудительной проверки
+   * @param request - phoneNumber в формате E.164 (только цифры), опционально force=true для принудительной проверки
    * @returns Promise с результатом: { exist, chatId, fromCache }
    * @throws Error при ошибке API
    */
