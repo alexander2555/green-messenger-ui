@@ -98,7 +98,7 @@ export function ConnectionsProvider({ children }: { children: ReactNode }) {
     (connection: Omit<Connection, 'id'>): string => {
       const id = crypto.randomUUID()
       const newConnection: Connection = { ...connection, id }
-      setConnections((prev) => [...prev, newConnection])
+      setConnections(prev => [...prev, newConnection])
       return id
     },
     [],
@@ -108,12 +108,15 @@ export function ConnectionsProvider({ children }: { children: ReactNode }) {
    * Удаляет подключение по ID.
    * Если удаляемое подключение было активным — сбрасываем активное.
    */
-  const removeConnection = useCallback((id: string) => {
-    setConnections((prev) => prev.filter((c) => c.id !== id))
-    if (activeConnectionId === id) {
-      setActiveConnectionId(null)
-    }
-  }, [activeConnectionId])
+  const removeConnection = useCallback(
+    (id: string) => {
+      setConnections(prev => prev.filter(c => c.id !== id))
+      if (activeConnectionId === id) {
+        setActiveConnectionId(null)
+      }
+    },
+    [activeConnectionId],
+  )
 
   /** Устанавливает активное подключение (или null для сброса) */
   const setActiveConnection = useCallback((id: string | null) => {
@@ -123,8 +126,8 @@ export function ConnectionsProvider({ children }: { children: ReactNode }) {
   /** Частично обновляет поля подключения */
   const updateConnection = useCallback(
     (id: string, updates: Partial<Connection>) => {
-      setConnections((prev) =>
-        prev.map((c) => (c.id === id ? { ...c, ...updates } : c)),
+      setConnections(prev =>
+        prev.map(c => (c.id === id ? { ...c, ...updates } : c)),
       )
     },
     [],
@@ -132,7 +135,7 @@ export function ConnectionsProvider({ children }: { children: ReactNode }) {
 
   // Находим активное подключение по ID
   const activeConnection =
-    connections.find((c) => c.id === activeConnectionId) ?? null
+    connections.find(c => c.id === activeConnectionId) ?? null
 
   // Создаём провайдер для активного подключения (если есть)
   const activeProvider = activeConnection
@@ -169,9 +172,7 @@ export function ConnectionsProvider({ children }: { children: ReactNode }) {
 export function useConnections() {
   const context = useContext(ConnectionsContext)
   if (!context) {
-    throw new Error(
-      'useConnections must be used within ConnectionsProvider',
-    )
+    throw new Error('useConnections must be used within ConnectionsProvider')
   }
   return context
 }

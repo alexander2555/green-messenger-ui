@@ -1,4 +1,7 @@
-import { ConnectionsProvider, useConnections } from '../context/ConnectionsContext'
+import {
+  ConnectionsProvider,
+  useConnections,
+} from '../context/ConnectionsContext'
 import { ProviderSettingsScreen } from './ProviderSettingsScreen'
 import ChatScreen from './ChatScreen'
 import '../styles/index.css'

@@ -12,7 +12,12 @@ type ChatScreenState =
   | { status: 'no-connection' }
   | { status: 'no-chat'; connection: Connection }
   | { status: 'loading'; connection: Connection }
-  | { status: 'ready'; connection: Connection; chatId: string; phoneNumber: string }
+  | {
+      status: 'ready'
+      connection: Connection
+      chatId: string
+      phoneNumber: string
+    }
   | { status: 'error'; connection: Connection; error: string }
 
 /** Основной экран чата.
@@ -20,10 +25,13 @@ type ChatScreenState =
  * Интегрирует поллинг уведомлений, создание чата, отправку сообщений.
  */
 export default function ChatScreen() {
-  const { activeConnection, activeProvider, setActiveConnection } = useConnections()
+  const { activeConnection, activeProvider, setActiveConnection } =
+    useConnections()
 
   // Состояние экрана
-  const [screenState, setScreenState] = useState<ChatScreenState>({ status: 'no-connection' })
+  const [screenState, setScreenState] = useState<ChatScreenState>({
+    status: 'no-connection',
+  })
   // Сообщения текущего чата
   const [messages, setMessages] = useState<Message[]>([])
   // Реф для прокрутки к новым сообщениям
@@ -39,7 +47,8 @@ export default function ChatScreen() {
   const statusRef = useRef<ChatScreenState['status']>('no-connection')
 
   useEffect(() => {
-    chatIdRef.current = screenState.status === 'ready' ? screenState.chatId : null
+    chatIdRef.current =
+      screenState.status === 'ready' ? screenState.chatId : null
     statusRef.current = screenState.status
   }, [screenState])
 
@@ -55,7 +64,7 @@ export default function ChatScreen() {
           timestamp,
           status: 'delivered',
         }
-        setMessages((prev) => [...prev, newMessage])
+        setMessages(prev => [...prev, newMessage])
         scrollToBottom()
       }
     },
@@ -95,21 +104,24 @@ export default function ChatScreen() {
     async (phoneNumber: string) => {
       if (!activeProvider || !activeConnection) return
 
-      setScreenState((prev) =>
+      setScreenState(prev =>
         prev.status === 'no-chat' || prev.status === 'ready'
           ? { status: 'loading', connection: activeConnection }
           : prev,
       )
 
       try {
-        const response: CheckAccountResponse = await activeProvider.checkAccount({
-          phoneNumber,
-          force: true,
-        })
+        const response: CheckAccountResponse =
+          await activeProvider.checkAccount({
+            phoneNumber,
+            force: true,
+          })
 
         if (!response.exist) {
           const providerName = activeConnection?.provider.toUpperCase() ?? 'MAX'
-          throw new Error(`Аккаунт не найден в ${providerName}. Проверьте номер телефона.`)
+          throw new Error(
+            `Аккаунт не найден в ${providerName}. Проверьте номер телефона.`,
+          )
         }
 
         // Успех — переходим в режим чата
@@ -121,7 +133,8 @@ export default function ChatScreen() {
         })
         setMessages([])
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Ошибка создания чата'
+        const errorMessage =
+          error instanceof Error ? error.message : 'Ошибка создания чата'
         setScreenState({
           status: 'error',
           connection: activeConnection,
@@ -156,7 +169,7 @@ export default function ChatScreen() {
       }
 
       // Оптимистичное добавление
-      setMessages((prev) => [...prev, optimisticMessage])
+      setMessages(prev => [...prev, optimisticMessage])
       scrollToBottom()
 
       try {
@@ -166,15 +179,17 @@ export default function ChatScreen() {
         })
 
         // Замена временного ID на реальный
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === tempId ? { ...m, id: response.idMessage, status: 'sent' as const } : m,
+        setMessages(prev =>
+          prev.map(m =>
+            m.id === tempId
+              ? { ...m, id: response.idMessage, status: 'sent' as const }
+              : m,
           ),
         )
       } catch (error) {
         // Помечаем ошибку, оставляем сообщение в списке
-        setMessages((prev) =>
-          prev.map((m) =>
+        setMessages(prev =>
+          prev.map(m =>
             m.id === tempId ? { ...m, status: 'error' as const } : m,
           ),
         )
@@ -207,7 +222,8 @@ export default function ChatScreen() {
           </svg>
           <p className={styles.emptyStateTitle}>Нет активного подключения</p>
           <p className={styles.emptyStateText}>
-            Перейдите в настройки, чтобы добавить и выбрать подключение к GREEN-API
+            Перейдите в настройки, чтобы добавить и выбрать подключение к
+            GREEN-API
           </p>
         </div>
       </div>
@@ -246,7 +262,10 @@ export default function ChatScreen() {
           </div>
         </header>
         <div className={styles.messagesArea}>
-          <NewChatBar onCreateChat={handleCreateChat} provider={activeConnection?.provider ?? 'max'} />
+          <NewChatBar
+            onCreateChat={handleCreateChat}
+            provider={activeConnection?.provider ?? 'max'}
+          />
         </div>
       </div>
     )
@@ -311,7 +330,10 @@ export default function ChatScreen() {
             <line x1="9" y1="9" x2="15" y2="15" />
           </svg>
           <p>{screenState.error}</p>
-          <button className={`${styles.btnPrimary} ${styles.retryBtn}`} onClick={handleRetry}>
+          <button
+            className={`${styles.btnPrimary} ${styles.retryBtn}`}
+            onClick={handleRetry}
+          >
             Попробовать снова
           </button>
         </div>
@@ -326,7 +348,12 @@ export default function ChatScreen() {
         <div className={styles.headerLeft}>
           <button
             className={styles.backBtn}
-            onClick={() => setScreenState({ status: 'no-chat', connection: screenState.connection })}
+            onClick={() =>
+              setScreenState({
+                status: 'no-chat',
+                connection: screenState.connection,
+              })
+            }
             aria-label="Назад к списку чатов"
           >
             <svg
@@ -346,15 +373,23 @@ export default function ChatScreen() {
           </button>
           <div className={styles.chatInfo}>
             <span className={styles.chatName}>
-              {screenState.phoneNumber.replace(/(\d{3})(\d{3})(\d{2})(\d{2})/, '+$1 ($2) $3-$4')}
+              {screenState.phoneNumber.replace(
+                /(\d{3})(\d{3})(\d{2})(\d{2})/,
+                '+$1 ($2) $3-$4',
+              )}
             </span>
             <span className={styles.chatStatus}>
-              {screenState.connection.provider.toUpperCase()} · {screenState.connection.idInstance.slice(-6)}
+              {screenState.connection.provider.toUpperCase()} ·{' '}
+              {screenState.connection.idInstance.slice(-6)}
             </span>
           </div>
         </div>
         <div className={styles.headerRight}>
-          <button className={styles.iconBtn} aria-label="Информация о чате" title="Инфо">
+          <button
+            className={styles.iconBtn}
+            aria-label="Информация о чате"
+            title="Инфо"
+          >
             <svg
               width="20"
               height="20"
@@ -371,7 +406,11 @@ export default function ChatScreen() {
               <line x1="12" y1="8" x2="12.01" y2="8" />
             </svg>
           </button>
-          <button className={styles.iconBtn} aria-label="Меню чата" title="Меню">
+          <button
+            className={styles.iconBtn}
+            aria-label="Меню чата"
+            title="Меню"
+          >
             <svg
               width="20"
               height="20"
@@ -391,7 +430,12 @@ export default function ChatScreen() {
         </div>
       </header>
 
-      <div className={styles.messagesArea} role="log" aria-live="polite" aria-label="Сообщения">
+      <div
+        className={styles.messagesArea}
+        role="log"
+        aria-live="polite"
+        aria-label="Сообщения"
+      >
         <MessageList messages={messages} />
         <div ref={messagesEndRef} />
       </div>

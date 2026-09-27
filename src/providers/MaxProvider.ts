@@ -23,11 +23,7 @@ export class MaxProvider extends GreenApiProvider {
    * @param idInstance - ID инстанса
    * @param apiTokenInstance - Токен инстанса
    */
-  constructor(
-    apiUrl: string,
-    idInstance: string,
-    apiTokenInstance: string,
-  ) {
+  constructor(apiUrl: string, idInstance: string, apiTokenInstance: string) {
     super(apiUrl, idInstance, apiTokenInstance)
   }
 
@@ -39,9 +35,7 @@ export class MaxProvider extends GreenApiProvider {
    * @returns Promise с idMessage отправленного сообщения
    * @throws Error при ошибке API (лимиты, неверный chatId, и т.д.)
    */
-  async sendMessage(
-    request: SendMessageRequest,
-  ): Promise<SendMessageResponse> {
+  async sendMessage(request: SendMessageRequest): Promise<SendMessageResponse> {
     return this.request<SendMessageResponse>('POST', '/sendMessage/', {
       chatId: request.chatId,
       message: request.message,
@@ -86,11 +80,7 @@ export class WhatsAppProvider extends GreenApiProvider {
    * @param idInstance - ID инстанса
    * @param apiTokenInstance - Токен инстанса
    */
-  constructor(
-    apiUrl: string,
-    idInstance: string,
-    apiTokenInstance: string,
-  ) {
+  constructor(apiUrl: string, idInstance: string, apiTokenInstance: string) {
     super(apiUrl, idInstance, apiTokenInstance)
   }
 
@@ -102,9 +92,7 @@ export class WhatsAppProvider extends GreenApiProvider {
    * @returns Promise с idMessage отправленного сообщения
    * @throws Error при ошибке API (лимиты, неверный chatId, и т.д.)
    */
-  async sendMessage(
-    request: SendMessageRequest,
-  ): Promise<SendMessageResponse> {
+  async sendMessage(request: SendMessageRequest): Promise<SendMessageResponse> {
     return this.request<SendMessageResponse>('POST', '/sendMessage/', {
       chatId: request.chatId,
       message: request.message,
@@ -126,10 +114,14 @@ export class WhatsAppProvider extends GreenApiProvider {
   async checkAccount(
     request: CheckAccountRequest,
   ): Promise<CheckAccountResponse> {
-    const response = await this.request<CheckWhatsAppResponse>('POST', '/checkWhatsApp/', {
-      phoneNumber: request.phoneNumber,
-      // force не поддерживается checkWhatsApp, но передаем для совместимости
-    })
+    const response = await this.request<CheckWhatsAppResponse>(
+      'POST',
+      '/checkWhatsApp/',
+      {
+        phoneNumber: request.phoneNumber,
+        // force не поддерживается checkWhatsApp, но передаем для совместимости
+      },
+    )
     // Маппинг ответа WhatsApp к общему интерфейсу
     return {
       exist: response.existsWhatsapp,
@@ -152,11 +144,7 @@ export class TelegramProvider extends GreenApiProvider {
    * @param idInstance - ID инстанса
    * @param apiTokenInstance - Токен инстанса
    */
-  constructor(
-    apiUrl: string,
-    idInstance: string,
-    apiTokenInstance: string,
-  ) {
+  constructor(apiUrl: string, idInstance: string, apiTokenInstance: string) {
     super(apiUrl, idInstance, apiTokenInstance)
   }
 
@@ -195,11 +183,10 @@ export function createProvider(
       return new WhatsAppProvider(apiUrl, idInstance, apiTokenInstance)
     case 'telegram':
       return new TelegramProvider(apiUrl, idInstance, apiTokenInstance)
-    default:
-      // TypeScript exhaustive check — если добавлен новый тип без обработки, будет ошибка компиляции
-      {
-        const _exhaustive: never = type
-        throw new Error(`Unknown provider type: ${_exhaustive}`)
-      }
+    default: // TypeScript exhaustive check — если добавлен новый тип без обработки, будет ошибка компиляции
+    {
+      const _exhaustive: never = type
+      throw new Error(`Unknown provider type: ${_exhaustive}`)
+    }
   }
 }
