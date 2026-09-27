@@ -50,6 +50,14 @@ export interface CheckAccountResponse {
   fromCache: boolean
 }
 
+export interface CheckWhatsAppResponse {
+  existsWhatsapp: boolean
+  chatId: string
+  username: string
+  phoneNumber: string
+  fromCache: boolean
+}
+
 export interface NotificationBody {
   typeWebhook: string
   instanceData: {

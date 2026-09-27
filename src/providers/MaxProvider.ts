@@ -4,6 +4,7 @@ import type {
   SendMessageResponse,
   CheckAccountRequest,
   CheckAccountResponse,
+  CheckWhatsAppResponse,
 } from '../types'
 
 /**
@@ -114,7 +115,7 @@ export class WhatsAppProvider extends GreenApiProvider {
 
   /**
    * Проверка существования аккаунта в WhatsApp по номеру телефона.
-   * Вызывает POST /checkAccount/.
+   * Вызывает POST /checkWhatsApp/ (специфичный для WhatsApp эндпоинт).
    * Для WhatsApp поддерживается любой международный формат (E.164).
    * Формат: цифры с кодом страны, без + и пробелов (например, 79001234567, 15551234567).
    *
@@ -125,10 +126,16 @@ export class WhatsAppProvider extends GreenApiProvider {
   async checkAccount(
     request: CheckAccountRequest,
   ): Promise<CheckAccountResponse> {
-    return this.request<CheckAccountResponse>('POST', '/checkAccount/', {
+    const response = await this.request<CheckWhatsAppResponse>('POST', '/checkWhatsApp/', {
       phoneNumber: request.phoneNumber,
-      force: request.force,
+      // force не поддерживается checkWhatsApp, но передаем для совместимости
     })
+    // Маппинг ответа WhatsApp к общему интерфейсу
+    return {
+      exist: response.existsWhatsapp,
+      chatId: response.chatId,
+      fromCache: response.fromCache,
+    }
   }
 }
 
