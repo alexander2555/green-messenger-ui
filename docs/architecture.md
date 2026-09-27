@@ -3,11 +3,10 @@
 ## Обзор
 
 Статическое SPA (Single Page Application) для обмена сообщениями через GREEN-API.
-Развёртывается как статические файлы на Timeweb virtual hosting.
 
 **Стек:** React 18 + TypeScript + Vite + CSS Modules
 **API:** Прямые вызовы GREEN-API из браузера (CORS разрешен)
-**State:** React Context + localStorage (нет Zustand/Redux)
+**State:** React Context + localStorage
 
 ---
 
