@@ -54,6 +54,14 @@ export interface MessengerProvider {
  * Инкапсулирует общую логику: формирование URL, HTTP-запросы, long polling цикл.
  * Конкретные провайдеры (MaxProvider, WhatsAppProvider, TelegramProvider)
  * наследуются от этого класса и реализуют только специфичные методы.
+ *
+ * Метод `request` предоставляет переопределяемые хуки для настройки:
+ * - `buildRequestUrl` — формирование полного URL с токеном
+ * - `prepareRequestBody` — трансформация тела запроса перед отправкой
+ * - `getRequestHeaders` — добавление/изменение заголовков
+ * - `parseResponse` — парсинг ответа (включая пустые тела)
+ * - `handleErrorResponse` — обработка ошибочных ответов
+ * Наследники могут переопределять эти методы для мессенджер-специфичной логики.
  */
 export abstract class GreenApiProvider implements MessengerProvider {
   /** Идентификатор провайдера — задаётся в наследниках */
@@ -80,9 +88,104 @@ export abstract class GreenApiProvider implements MessengerProvider {
   }
 
   /**
+   * Хук: формирует полный URL запроса с вставкой токена.
+   * Формат GREEN-API: {baseUrl}/{methodName}/{token}/{rest}?{query}
+   * @param path - Путь метода API (начинается с /)
+   * @returns Полный URL для fetch
+   */
+  protected buildRequestUrl(path: string): string {
+    if (!this.apiTokenInstance) {
+      console.error('[GreenApiProvider] apiTokenInstance is EMPTY!', {
+        provider: this.id,
+        path,
+      })
+      throw new Error(
+        '[GreenApiProvider] apiTokenInstance is empty — cannot make request',
+      )
+    }
+    // GREEN-API формат URL: {apiUrl}/waInstance{idInstance}/{method}/{token}/[rest]?[query]
+    // Токен ВСЕГДА вставляется ПОСЛЕ имени метода (первого сегмента пути)
+    const [pathname, search = ''] = path.split('?')
+    const segments = pathname.split('/').filter(Boolean)
+    if (segments.length === 0) {
+      throw new Error('[GreenApiProvider] Invalid path: missing method name')
+    }
+    const methodName = segments[0]
+    const rest = segments.slice(1).join('/')
+    const pathWithToken = rest
+      ? `/${methodName}/${this.apiTokenInstance}/${rest}`
+      : `/${methodName}/${this.apiTokenInstance}`
+    return `${this.getBaseUrl()}${pathWithToken}${search ? `?${search}` : ''}`
+  }
+
+  /**
+   * Хук: подготавитвает тело запроса перед отправкой.
+   * По умолчанию возвращает тело как есть.
+   * Наследники могут трансформировать body (например, привести phoneNumber к integer для Telegram).
+   * @param _path - Путь метода API (не используется в базовой реализации)
+   * @param body - Исходное тело запроса
+   * @returns Трансформированное тело запроса
+   */
+  protected prepareRequestBody(_path: string, body?: unknown): unknown {
+    return body
+  }
+
+  /**
+   * Хук: возвращает заголовки для запроса.
+   * По умолчанию: Content-Type: application/json
+   * @param _path - Путь метода API (не используется в базовой реализации)
+   * @param _method - HTTP метод (не используется в базовой реализации)
+   * @returns Объект заголовков
+   */
+  protected getRequestHeaders(
+    _path: string,
+    _method: string,
+  ): Record<string, string> {
+    return {
+      'Content-Type': 'application/json',
+    }
+  }
+
+  /**
+   * Хук: парсит успешный ответ.
+   * Обрабатывает 204 No Content и пустые тела.
+   * @param response - Response объект от fetch
+   * @returns Распаршенный JSON или пустой объект
+   */
+  protected async parseResponse<T>(response: Response): Promise<T> {
+    if (response.status === 204) {
+      return {} as T
+    }
+    const text = await response.text()
+    if (!text) {
+      return {} as T
+    }
+    return JSON.parse(text) as T
+  }
+
+  /**
+   * Хук: обрабатывает ошибочный ответ (HTTP != 2xx).
+   * По умолчанию читает тело и выбрасывает Error с деталями.
+   * Наследники могут добавить специфичную обработку ошибок.
+   * @param response - Response объект с ошибкой
+   * @throws Error
+   */
+  protected async handleErrorResponse(response: Response): Promise<never> {
+    const errorText = await response.text().catch(() => '')
+    console.error('[GreenApiProvider] Request failed:', {
+      url: response.url,
+      status: response.status,
+      statusText: response.statusText,
+      body: errorText,
+    })
+    throw new Error(
+      `GREEN-API error: ${response.status} ${response.statusText} - ${errorText || 'No response body'}`,
+    )
+  }
+
+  /**
    * Универсальный метод выполнения HTTP-запроса к GREEN-API.
-   * Добавляет токен в URL перед query string (формат GREEN-API: /method/{token}?query).
-   * Устанавливает Content-Type: application/json, обрабатывает ошибки HTTP-статусов.
+   * Использует переопределяемые хуки для настройки URL, тела, заголовков и обработки ответа.
    * @template T - Тип ожидаемого ответа
    * @param method - HTTP метод (GET, POST, DELETE)
    * @param path - Путь метода API (начинается с /, например /sendMessage/ или /receiveNotification/?receiveTimeout=25)
@@ -95,65 +198,21 @@ export abstract class GreenApiProvider implements MessengerProvider {
     path: string,
     body?: unknown,
   ): Promise<T> {
-    // Защита: токен не должен быть пустым
-    if (!this.apiTokenInstance) {
-      console.error('[GreenApiProvider] apiTokenInstance is EMPTY!', {
-        provider: this.id,
-        method,
-        path,
-      })
-      throw new Error(
-        '[GreenApiProvider] apiTokenInstance is empty — cannot make request',
-      )
-    }
-    // GREEN-API формат URL: {apiUrl}/waInstance{idInstance}/{method}/{token}/[rest]?[query]
-    // Токен ВСЕГДА вставляется ПОСЛЕ имени метода (первого сегмента пути)
-    const [pathname, search = ''] = path.split('?')
-    const segments = pathname.split('/').filter(Boolean) // ['receiveNotification'] или ['deleteNotification', '123']
-    if (segments.length === 0) {
-      throw new Error('[GreenApiProvider] Invalid path: missing method name')
-    }
-    // Вставляем токен после имени метода
-    const methodName = segments[0]
-    const rest = segments.slice(1).join('/')
-    const pathWithToken = rest
-      ? `/${methodName}/${this.apiTokenInstance}/${rest}`
-      : `/${methodName}/${this.apiTokenInstance}`
-    const url = `${this.getBaseUrl()}${pathWithToken}${search ? `?${search}` : ''}`
+    const url = this.buildRequestUrl(path)
+    const preparedBody = this.prepareRequestBody(path, body)
+    const headers = this.getRequestHeaders(path, method)
+
     const response = await fetch(url, {
       method,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: body ? JSON.stringify(body) : undefined,
+      headers,
+      body: preparedBody ? JSON.stringify(preparedBody) : undefined,
     })
 
     if (!response.ok) {
-      const errorText = await response.text().catch(() => '')
-      console.error('[GreenApiProvider] Request failed:', {
-        url,
-        method,
-        status: response.status,
-        statusText: response.statusText,
-        body: errorText,
-      })
-      throw new Error(
-        `GREEN-API error: ${response.status} ${response.statusText} - ${errorText || 'No response body'}`,
-      )
+      return this.handleErrorResponse(response)
     }
 
-    // 204 No Content или 200 с пустым телом (receiveNotification таймаут)
-    if (response.status === 204) {
-      return {} as T
-    }
-
-    // Проверяем, есть ли тело ответа перед парсингом JSON
-    const text = await response.text()
-    if (!text) {
-      return {} as T
-    }
-
-    return JSON.parse(text) as T
+    return this.parseResponse<T>(response)
   }
 
   /** Отправка сообщения — реализуется в наследниках */
