@@ -28,10 +28,11 @@ src/
 ├── hooks/
 │   └── useNotificationsPolling.ts # Жизненный цикл long polling
 ├── providers/
-│   ├── MessengerProvider.ts     # Интерфейс + базовый класс
-│   ├── WhatsAppProvider.ts
-│   ├── TelegramProvider.ts
-│   └── MaxProvider.ts
+│   ├── MessengerProvider.ts     # Интерфейс + базовый класс (GreenApiProvider)
+│   ├── providerFactory.ts       # Фабрика createProvider()
+│   ├── MaxProvider.ts           # MAX провайдер
+│   ├── WhatsAppProvider.ts      # WhatsApp провайдер
+│   └── TelegramProvider.ts      # Telegram провайдер
 ├── styles/
 │   └── index.css                # Глобальные стили + design tokens
 ├── types/
@@ -45,7 +46,7 @@ src/
 
 ### 1. Multi-provider архитектура
 ```typescript
-// Интерфейс провайдера
+// Интерфейс провайдера (MessengerProvider.ts)
 interface MessengerProvider {
   readonly id: 'max' | 'whatsapp' | 'telegram'
   sendMessage(req): Promise<SendMessageResponse>
@@ -53,12 +54,15 @@ interface MessengerProvider {
   pollNotifications(cb): () => void
 }
 
-// Фабрика
+// Базовый класс (MessengerProvider.ts)
+abstract class GreenApiProvider implements MessengerProvider
+
+// Фабрика (providerFactory.ts)
 createProvider(type, apiUrl, idInstance, apiTokenInstance)
 ```
-- `MaxProvider`
-- `WhatsAppProvider` — E.164, checkWhatsApp эндпоинт
-- `TelegramProvider`
+- `MaxProvider` — формат 7XXXXXXXXXX / 375XXXXXXXXX, endpoint `/checkAccount/`
+- `WhatsAppProvider` — E.164, endpoint `/checkWhatsApp/`
+- `TelegramProvider` — E.164, endpoint `/checkAccount/`
 
 ### 2. Long Polling
 - `GreenApiProvider.pollNotifications()` — бесконечный цикл `receiveNotification/?receiveTimeout=25`
@@ -97,6 +101,7 @@ no-connection → no-chat → loading → ready
 |-----------|--------|--------|
 | MAX | `7XXXXXXXXXX` (11 цифр) / `375XXXXXXXXX` (12 цифр) | `79001234567` |
 | WhatsApp | Любой E.164 (мин. 10 цифр) | `79001234567`, `15551234567` |
+| Telegram | Любой E.164 (мин. 10 цифр) | `79001234567`, `15551234567` |
 
 ---
 
@@ -106,8 +111,8 @@ no-connection → no-chat → loading → ready
 
 | Метод | Эндпоинт | Назначение |
 |-------|----------|------------|
-| POST | `/sendMessage/` | Отправка текста |
-| POST | `/checkAccount/` | Проверка номера (MAX) |
+| POST | `/sendMessage/` | Отправка текста (все провайдеры) |
+| POST | `/checkAccount/` | Проверка номера (MAX, Telegram) |
 | POST | `/checkWhatsApp/` | Проверка номера (WhatsApp) |
 | GET | `/receiveNotification/?receiveTimeout=25` | Long polling |
 | DELETE | `/deleteNotification/{receiptId}` | Подтверждение получения |
