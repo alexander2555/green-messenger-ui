@@ -64,12 +64,14 @@ export function useNotificationsPolling({
     }
 
     // Запускаем поллинг через провайдер
-    stopPollingRef.current = provider.pollNotifications((chatId, text, timestamp) => {
-      // Вызываем callback только если поллинг всё ещё включён
-      if (enabledRef.current) {
-        onIncomingMessageRef.current(chatId, text, timestamp)
-      }
-    })
+    stopPollingRef.current = provider.pollNotifications(
+      (chatId, text, timestamp) => {
+        // Вызываем callback только если поллинг всё ещё включён
+        if (enabledRef.current) {
+          onIncomingMessageRef.current(chatId, text, timestamp)
+        }
+      },
+    )
 
     // Cleanup: останавливаем поллинг при размонтировании или смене провайдера
     return () => {
@@ -97,9 +99,11 @@ export function useNotificationsPolling({
    */
   const start = useCallback(() => {
     if (provider && !stopPollingRef.current && enabledRef.current) {
-      stopPollingRef.current = provider.pollNotifications((chatId, text, timestamp) => {
-        onIncomingMessageRef.current(chatId, text, timestamp)
-      })
+      stopPollingRef.current = provider.pollNotifications(
+        (chatId, text, timestamp) => {
+          onIncomingMessageRef.current(chatId, text, timestamp)
+        },
+      )
     }
   }, [provider])
 

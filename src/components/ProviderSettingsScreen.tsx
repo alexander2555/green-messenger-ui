@@ -131,7 +131,10 @@ export function ProviderSettingsScreen() {
   )
 
   // Проверка, доступен ли выбранный провайдер (MAX и WhatsApp)
-  const isProviderAvailable = useMemo(() => provider === 'max' || provider === 'whatsapp', [provider])
+  const isProviderAvailable = useMemo(
+    () => provider === 'max' || provider === 'whatsapp',
+    [provider],
+  )
 
   return (
     <div className={styles.container}>
@@ -194,9 +197,7 @@ export function ProviderSettingsScreen() {
                 </p>
               )}
               {(provider as string) === 'telegram' && (
-                <p className={styles.helperText}>
-                  Telegram — в разработке.
-                </p>
+                <p className={styles.helperText}>Telegram — в разработке.</p>
               )}
             </div>
 
