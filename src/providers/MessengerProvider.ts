@@ -27,11 +27,12 @@ export interface MessengerProvider {
 
   /**
    * Проверка существования аккаунта по номеру телефона и получение chatId.
-   * @param request - Номер телефона в формате, зависящем от провайдера:
-   *   - MAX: 7XXXXXXXXXX (RU) или 375XXXXXXXXX (BY)
-   *   - WhatsApp/Telegram: любой международный E.164 (мин. 10 цифр)
-   *   и флаг force
-   * @returns Promise с результатом проверки (exist, chatId, fromCache)
+   * @param request - Формат зависит от провайдера:
+   *   - MAX: phoneNumber как строка 7XXXXXXXXXX (RU) или 375XXXXXXXXX (BY)
+   *   - WhatsApp: phoneNumber как строка в формате E.164 (только цифры, мин. 10)
+   *   - Telegram: phoneNumber как integer (без +) ИЛИ username (строка, начинается с @)
+   *   и опционально force
+   * @returns Promise с результатом проверки (exist, chatId, fromCache, plus username/phoneNumber для Telegram)
    * @throws Error при сетевой ошибке или ошибке API
    */
   checkAccount(request: CheckAccountRequest): Promise<CheckAccountResponse>
@@ -94,9 +95,31 @@ export abstract class GreenApiProvider implements MessengerProvider {
     path: string,
     body?: unknown,
   ): Promise<T> {
-    // Разделяем путь и query string, токен вставляется ПЕРЕД ? (формат GREEN-API)
+    // Защита: токен не должен быть пустым
+    if (!this.apiTokenInstance) {
+      console.error('[GreenApiProvider] apiTokenInstance is EMPTY!', {
+        provider: this.id,
+        method,
+        path,
+      })
+      throw new Error(
+        '[GreenApiProvider] apiTokenInstance is empty — cannot make request',
+      )
+    }
+    // GREEN-API формат URL: {apiUrl}/waInstance{idInstance}/{method}/{token}/[rest]?[query]
+    // Токен ВСЕГДА вставляется ПОСЛЕ имени метода (первого сегмента пути)
     const [pathname, search = ''] = path.split('?')
-    const url = `${this.getBaseUrl()}${pathname}${this.apiTokenInstance}${search ? `?${search}` : ''}`
+    const segments = pathname.split('/').filter(Boolean) // ['receiveNotification'] или ['deleteNotification', '123']
+    if (segments.length === 0) {
+      throw new Error('[GreenApiProvider] Invalid path: missing method name')
+    }
+    // Вставляем токен после имени метода
+    const methodName = segments[0]
+    const rest = segments.slice(1).join('/')
+    const pathWithToken = rest
+      ? `/${methodName}/${this.apiTokenInstance}/${rest}`
+      : `/${methodName}/${this.apiTokenInstance}`
+    const url = `${this.getBaseUrl()}${pathWithToken}${search ? `?${search}` : ''}`
     const response = await fetch(url, {
       method,
       headers: {
@@ -170,15 +193,17 @@ export abstract class GreenApiProvider implements MessengerProvider {
           )
 
           // Если есть receiptId и body — обрабатываем уведомление
-          if (response.receiptId && response.body) {
+          if (response?.receiptId && response.body) {
             const body = response.body
 
             // Логируем все входящие уведомления для диагностики
             console.log('[GreenApiProvider] Received notification:', {
+              provider: this.id,
               typeWebhook: body.typeWebhook,
               typeMessage: body.messageData?.typeMessage,
               hasText: !!body.messageData?.textMessageData?.textMessage,
               chatId: body.messageData?.chatId,
+              instanceType: body.instanceData?.typeInstance,
             })
 
             // Фильтруем: только входящие текстовые сообщения
@@ -192,16 +217,43 @@ export abstract class GreenApiProvider implements MessengerProvider {
               md.textMessageData?.textMessage != null
 
             if (isIncomingText && md) {
-              const chatId = md.chatId
-              const text = md.textMessageData!.textMessage
-              // GREEN-API возвращает timestamp в секундах, приводим к миллисекундам
-              const timestamp = md.timestamp * 1000
-
-              onIncomingText(chatId, text, timestamp)
+              // Для Telegram (особенно ботов) chatId может быть в senderData, а не в messageData
+              const chatId = md.chatId ?? body.senderData?.chatId
+              if (!chatId) {
+                console.warn(
+                  '[GreenApiProvider] No chatId found in notification',
+                  { body },
+                )
+              } else {
+                const text = md.textMessageData!.textMessage
+                // Отладка: полный текст входящего сообщения
+                console.log('[GreenApiProvider] Incoming text message:', {
+                  provider: this.id,
+                  chatId,
+                  textLength: text.length,
+                  textPreview: text.slice(0, 200),
+                  hasEntities: !!md.textMessageData?.entities,
+                  entities: md.textMessageData?.entities,
+                  forwardingScore: md.textMessageData?.forwardingScore,
+                  isForwarded: md.textMessageData?.isForwarded,
+                })
+                // GREEN-API возвращает timestamp в секундах.
+                // У Telegram timestamp на уровне body, у WhatsApp/MAX — внутри messageData
+                const timestamp = (md.timestamp ?? body.timestamp) * 1000
+                onIncomingText(chatId, text, timestamp)
+              }
             }
 
             // Всегда подтверждаем получение уведомления (удаляем из очереди)
             try {
+              // Отладка: что отправляем на удаление
+              console.log('[GreenApiProvider] DELETE notification:', {
+                provider: this.id,
+                receiptId: response.receiptId,
+                tokenPresent: !!this.apiTokenInstance,
+                tokenPrefix: this.apiTokenInstance?.slice(0, 10),
+                path: `/deleteNotification/${response.receiptId}`,
+              })
               await this.request<DeleteNotificationResponse>(
                 'DELETE',
                 `/deleteNotification/${response.receiptId}`,

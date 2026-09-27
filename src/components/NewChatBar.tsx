@@ -3,57 +3,89 @@ import styles from './NewChatBar.module.css'
 
 /** Props для NewChatBar */
 interface NewChatBarProps {
-  /** Callback при создании чата: (phoneNumber) => void */
-  onCreateChat: (phoneNumber: string) => void
-  /** Тип провайдера для валидации номера */
+  /** Callback при создании чата: (identifier) => void
+   * Для Telegram identifier может быть телефоном (только цифры) или username (начинается с @) */
+  onCreateChat: (identifier: string) => void
+  /** Тип провайдера для валидации ввода */
   provider: 'max' | 'whatsapp' | 'telegram'
 }
 
-/** Компонент для ввода номера телефона и создания нового чата.
- * Валидирует формат номера в зависимости от провайдера.
+/** Компонент для ввода номера телефона/username и создания нового чата.
+ * Валидирует формат в зависимости от провайдера.
+ * Для Telegram: телефон (начинается с +) ИЛИ username (начинается с @)
  */
 export default function NewChatBar({
   onCreateChat,
   provider,
 }: NewChatBarProps) {
-  const [phoneNumber, setPhoneNumber] = useState('')
+  const [inputValue, setInputValue] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  /** Валидация номера телефона в зависимости от провайдера */
-  const validatePhone = useCallback(
+  /** Валидация ввода в зависимости от провайдера */
+  const validateInput = useCallback(
     (value: string): string | null => {
-      const cleaned = value.replace(/\D/g, '')
+      const trimmed = value.trim()
 
-      if (!cleaned) {
-        return 'Введите номер телефона'
+      if (!trimmed) {
+        return provider === 'telegram'
+          ? 'Введите номер телефона (начинается с +) или username (начинается с @)'
+          : 'Введите номер телефона'
       }
 
       if (provider === 'max') {
-        // MAX поддерживает только RU (7) и BY (375)
+        // MAX: только телефон, формат E.164 (цифры с кодом страны)
+        const cleaned = trimmed.replace(/\D/g, '')
+        if (!cleaned) {
+          return 'Введите номер телефона'
+        }
         if (cleaned.startsWith('7')) {
           if (cleaned.length !== 11) {
             return 'Номер России должен содержать 11 цифр (7XXXXXXXXXX)'
           }
           return null
         }
-
         if (cleaned.startsWith('375')) {
           if (cleaned.length !== 12) {
             return 'Номер Беларуси должен содержать 12 цифр (375XXXXXXXXX)'
           }
           return null
         }
-
         return 'Для MAX поддерживаются только номера России (+7) и Беларуси (+375)'
       }
 
-      // WhatsApp и Telegram: любой международный формат (E.164)
-      // Минимум 10 цифр (код страны + номер)
+      if (provider === 'telegram') {
+        // Telegram: телефон (+7XXXXXXXXXX) ИЛИ username (@username)
+        if (trimmed.startsWith('@')) {
+          // Валидация username: @ + alphanumeric/underscore, 5-32 символа после @
+          const username = trimmed.slice(1)
+          if (username.length < 5 || username.length > 32) {
+            return 'Username должен быть от 5 до 32 символов после @'
+          }
+          if (!/^[A-Za-z0-9_]+$/.test(username)) {
+            return 'Username может содержать только латинские буквы, цифры и _'
+          }
+          return null
+        }
+        if (trimmed.startsWith('+')) {
+          // Телефон: + и только цифры после
+          const phoneDigits = trimmed.slice(1).replace(/\D/g, '')
+          if (!phoneDigits) {
+            return 'После + должны быть цифры номера'
+          }
+          if (phoneDigits.length < 10) {
+            return 'Номер слишком короткий (минимум 10 цифр после +)'
+          }
+          return null
+        }
+        return 'Для Telegram введите номер (начинается с +) или username (начинается с @)'
+      }
+
+      // WhatsApp: любой международный формат (E.164), минимум 10 цифр
+      const cleaned = trimmed.replace(/\D/g, '')
       if (cleaned.length < 10) {
         return 'Номер слишком короткий. Введите в международном формате (например, 79001234567)'
       }
-
       return null
     },
     [provider],
@@ -61,32 +93,51 @@ export default function NewChatBar({
 
   /** Текст подсказки в зависимости от провайдера */
   const placeholderText =
-    provider === 'max' ? '+7 (XXX) XXX-XX-XX' : '+<код страны><номер>'
+    provider === 'max'
+      ? '+7 (XXX) XXX-XX-XX'
+      : provider === 'telegram'
+        ? '+<код><номер> или @username'
+        : '+<код страны><номер>'
 
   const helperText =
     provider === 'max'
       ? 'Формат: +7XXXXXXXXXX (Россия) или +375XXXXXXXXX (Беларусь)'
-      : 'Формат: цифры с кодом страны без + (например, 79001234567 для РФ, 15551234567 для США)'
+      : provider === 'telegram'
+        ? 'Телефон: +79001234567 или Username: @username'
+        : 'Формат: цифры с кодом страны без + (например, 79001234567 для РФ, 15551234567 для США)'
 
   const formatHint =
     provider === 'max'
       ? 'Убедитесь, что у получателя установлен MAX и номер зарегистрирован в GREEN-API'
-      : `Убедитесь, что у получателя установлен ${provider.toUpperCase()} и номер зарегистрирован в GREEN-API`
+      : `Убедитесь, что у получателя установлен ${provider.toUpperCase()} и номер/username зарегистрирован в GREEN-API`
 
   /** Обработка изменения ввода */
-  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-    // Оставляем только цифры и + в начале
-    const cleaned = value.replace(/[^\d+]/g, '').replace(/\+(?=.*\+)/g, '')
-    setPhoneNumber(cleaned)
-    setError(null)
-  }, [])
+  const handleChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = e.target.value
+      let cleaned: string
+      if (provider === 'telegram') {
+        // Для Telegram разрешаем + в начале и @ в начале, остальные символы - только цифры/буквы/underscore
+        cleaned = value.replace(/[^\d+@a-zA-Z_]/g, '')
+        // Только один + в начале
+        cleaned = cleaned.replace(/\+(?=.*\+)/g, '')
+        // Только один @ в начале
+        cleaned = cleaned.replace(/@(?=.*@)/g, '')
+      } else {
+        // Для MAX и WhatsApp: только цифры и + в начале
+        cleaned = value.replace(/[^\d+]/g, '').replace(/\+(?=.*\+)/g, '')
+      }
+      setInputValue(cleaned)
+      setError(null)
+    },
+    [provider],
+  )
 
   /** Обработка отправки формы */
   const handleSubmit = useCallback(
     async (e: FormEvent) => {
       e.preventDefault()
-      const validationError = validatePhone(phoneNumber)
+      const validationError = validateInput(inputValue)
       if (validationError) {
         setError(validationError)
         return
@@ -94,14 +145,30 @@ export default function NewChatBar({
 
       setIsSubmitting(true)
       try {
-        // Передаём очищенный номер (только цифры)
-        const cleaned = phoneNumber.replace(/\D/g, '')
-        await onCreateChat(cleaned)
+        // Подготавливаем identifier для передачи провайдеру
+        let identifier: string
+        if (provider === 'telegram') {
+          const trimmed = inputValue.trim()
+          if (trimmed.startsWith('@')) {
+            // Username передаём как есть (с @)
+            identifier = trimmed
+          } else if (trimmed.startsWith('+')) {
+            // Телефон: передаём только цифры (без +)
+            identifier = trimmed.slice(1).replace(/\D/g, '')
+          } else {
+            // На всякий случай - только цифры
+            identifier = trimmed.replace(/\D/g, '')
+          }
+        } else {
+          // MAX, WhatsApp: только цифры
+          identifier = inputValue.replace(/\D/g, '')
+        }
+        await onCreateChat(identifier)
       } finally {
         setIsSubmitting(false)
       }
     },
-    [phoneNumber, validatePhone, onCreateChat],
+    [inputValue, validateInput, onCreateChat, provider],
   )
 
   return (
@@ -123,27 +190,29 @@ export default function NewChatBar({
 
       <h2 className={styles.title}>Новый чат</h2>
       <p className={styles.description}>
-        Введите номер телефона получателя, чтобы начать переписку в{' '}
+        Введите номер телефона или username получателя, чтобы начать переписку в{' '}
         {provider.toUpperCase()}
       </p>
 
       <form onSubmit={handleSubmit} className={styles.form} noValidate>
         <div className={styles.inputWrapper}>
           <label htmlFor="phoneNumber" className={styles.label}>
-            Номер телефона
+            {provider === 'telegram'
+              ? 'Телефон или Username'
+              : 'Номер телефона'}
           </label>
           <input
             id="phoneNumber"
             type="tel"
             className={`${styles.input} ${error ? styles.inputError : ''}`}
-            value={phoneNumber}
+            value={inputValue}
             onChange={handleChange}
             placeholder={placeholderText}
             disabled={isSubmitting}
             aria-describedby={error ? 'phone-error' : 'phone-hint'}
             aria-invalid={!!error}
             autoComplete="tel"
-            inputMode="tel"
+            inputMode={provider === 'telegram' ? 'text' : 'tel'}
           />
           {error ? (
             <p id="phone-error" className={styles.errorText} role="alert">

@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useConnections } from '../context/ConnectionsContext'
 import { useNotificationsPolling } from '../hooks/useNotificationsPolling'
-import type { Connection, Message, CheckAccountResponse } from '../types'
+import type { Connection, Message } from '../types'
 import NewChatBar from './NewChatBar'
 import MessageList from './MessageList'
 import MessageInput from './MessageInput'
@@ -16,7 +16,10 @@ type ChatScreenState =
       status: 'ready'
       connection: Connection
       chatId: string
-      phoneNumber: string
+      /** Идентификатор: телефон (цифры) или username (с @ для Telegram) */
+      identifier: string
+      /** true если identifier — это Telegram username */
+      isUsername: boolean
     }
   | { status: 'error'; connection: Connection; error: string }
 
@@ -101,7 +104,7 @@ export default function ChatScreen() {
 
   /** Создание нового чата через CheckAccount */
   const handleCreateChat = useCallback(
-    async (phoneNumber: string) => {
+    async (identifier: string) => {
       if (!activeProvider || !activeConnection) return
 
       setScreenState(prev =>
@@ -111,16 +114,28 @@ export default function ChatScreen() {
       )
 
       try {
-        const response: CheckAccountResponse =
-          await activeProvider.checkAccount({
-            phoneNumber,
-            force: true,
-          })
+        const isTelegram = activeConnection.provider === 'telegram'
+        const isUsername = isTelegram && identifier.startsWith('@')
+
+        const request = isUsername
+          ? { username: identifier, force: true }
+          : { phoneNumber: identifier, force: true }
+
+        // Тип ответа зависит от провайдера
+        const response = isTelegram
+          ? await activeProvider.checkAccount(
+              request as Parameters<typeof activeProvider.checkAccount>[0],
+            )
+          : await activeProvider.checkAccount({
+              phoneNumber: identifier,
+              force: true,
+            })
 
         if (!response.exist) {
           const providerName = activeConnection?.provider.toUpperCase() ?? 'MAX'
+          const identifierType = isUsername ? 'username' : 'номер телефона'
           throw new Error(
-            `Аккаунт не найден в ${providerName}. Проверьте номер телефона.`,
+            `Аккаунт не найден в ${providerName}. Проверьте ${identifierType}.`,
           )
         }
 
@@ -129,7 +144,8 @@ export default function ChatScreen() {
           status: 'ready',
           connection: activeConnection,
           chatId: response.chatId,
-          phoneNumber,
+          identifier,
+          isUsername,
         })
         setMessages([])
       } catch (error) {
@@ -373,60 +389,18 @@ export default function ChatScreen() {
           </button>
           <div className={styles.chatInfo}>
             <span className={styles.chatName}>
-              {screenState.phoneNumber.replace(
-                /(\d{3})(\d{3})(\d{2})(\d{2})/,
-                '+$1 ($2) $3-$4',
-              )}
+              {screenState.isUsername
+                ? screenState.identifier
+                : screenState.identifier.replace(
+                    /(\d{3})(\d{3})(\d{2})(\d{2})/,
+                    '+$1 ($2) $3-$4',
+                  )}
             </span>
             <span className={styles.chatStatus}>
               {screenState.connection.provider.toUpperCase()} ·{' '}
               {screenState.connection.idInstance.slice(-6)}
             </span>
           </div>
-        </div>
-        <div className={styles.headerRight}>
-          <button
-            className={styles.iconBtn}
-            aria-label="Информация о чате"
-            title="Инфо"
-          >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="16" x2="12" y2="12" />
-              <line x1="12" y1="8" x2="12.01" y2="8" />
-            </svg>
-          </button>
-          <button
-            className={styles.iconBtn}
-            aria-label="Меню чата"
-            title="Меню"
-          >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <circle cx="12" cy="12" r="1" />
-              <circle cx="19" cy="12" r="1" />
-              <circle cx="5" cy="12" r="1" />
-            </svg>
-          </button>
         </div>
       </header>
 
