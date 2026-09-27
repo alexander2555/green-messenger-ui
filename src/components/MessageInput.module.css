@@ -23,7 +23,9 @@
   border-radius: var(--radius-lg);
   background: var(--color-bg-primary);
   resize: none;
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
   font-family: inherit;
 }
 
@@ -51,8 +53,11 @@
   color: white;
   display: flex;
   align-items: center;
+  align-self: flex-start;
   justify-content: center;
-  transition: background-color var(--transition-fast), transform var(--transition-fast);
+  transition:
+    background-color var(--transition-fast),
+    transform var(--transition-fast);
 }
 
 .btnSend:hover:not(:disabled) {

@@ -1,4 +1,10 @@
-import React, { useState, useCallback, useRef, useEffect, type KeyboardEvent } from 'react'
+import React, {
+  useState,
+  useCallback,
+  useRef,
+  useEffect,
+  type KeyboardEvent,
+} from 'react'
 import styles from './MessageInput.module.css'
 
 /** Props для MessageInput */
@@ -13,7 +19,10 @@ interface MessageInputProps {
  * Enter — отправка, Shift+Enter — новая строка.
  * Авто-ресайз по высоте контента (до max-height).
  */
-export default function MessageInput({ onSend, disabled = false }: MessageInputProps) {
+export default function MessageInput({
+  onSend,
+  disabled = false,
+}: MessageInputProps) {
   const [text, setText] = useState('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -68,8 +77,11 @@ export default function MessageInput({ onSend, disabled = false }: MessageInputP
           value={text}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
-          placeholder={disabled ? 'Выберите чат для отправки сообщений' : 'Введите сообщение...'}
-          disabled={disabled || text.trim() === ''}
+          placeholder={
+            disabled
+              ? 'Выберите чат для отправки сообщений'
+              : 'Введите сообщение...'
+          }
           aria-label="Текст сообщения"
           aria-describedby="input-hint"
           rows={1}
