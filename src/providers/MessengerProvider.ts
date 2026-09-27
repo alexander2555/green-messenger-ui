@@ -116,19 +116,29 @@ export abstract class GreenApiProvider implements MessengerProvider {
       )
     }
 
-    // DELETE может возвращать пустое тело (204 No Content)
+    // 204 No Content или 200 с пустым телом (receiveNotification таймаут)
     if (response.status === 204) {
       return {} as T
     }
 
-    return response.json() as Promise<T>
+    // Проверяем, есть ли тело ответа перед парсингом JSON
+    const text = await response.text()
+    if (!text) {
+      return {} as T
+    }
+
+    return JSON.parse(text) as T
   }
 
   /** Отправка сообщения — реализуется в наследниках */
-  abstract sendMessage(request: SendMessageRequest): Promise<SendMessageResponse>
+  abstract sendMessage(
+    request: SendMessageRequest,
+  ): Promise<SendMessageResponse>
 
   /** Проверка аккаунта — реализуется в наследниках */
-  abstract checkAccount(request: CheckAccountRequest): Promise<CheckAccountResponse>
+  abstract checkAccount(
+    request: CheckAccountRequest,
+  ): Promise<CheckAccountResponse>
 
   /**
    * Запускает бесконечный цикл long polling для получения уведомлений.
@@ -184,7 +194,7 @@ export abstract class GreenApiProvider implements MessengerProvider {
           if (!stopped) {
             // Логируем ошибку, но не прерываем цикл — делаем паузу и продолжаем
             console.error('[GreenApiProvider] Polling error:', error)
-            await new Promise((resolve) => setTimeout(resolve, 1000))
+            await new Promise(resolve => setTimeout(resolve, 1000))
           }
         }
       }
