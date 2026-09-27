@@ -86,23 +86,38 @@ export interface SendMessageResponse {
   idMessage: string
 }
 
-/** Запрос на проверку номера (MAX: checkAccount) */
+/** Запрос на проверку аккаунта (MAX/Telegram: checkAccount) */
 export interface CheckAccountRequest {
-  /** Номер телефона: 11 цифр (7XXXXXXXXXX) для RU или 12 цифр (375XXXXXXXXX) для BY, без + и пробелов */
-  phoneNumber: string
+  /** Номер телефона в международном формате (только цифры, без +). Для Telegram — integer, для MAX — string */
+  phoneNumber?: string | number
+  /** Username в Telegram (должен начинаться с @). Используется вместо phoneNumber для Telegram */
+  username?: string
   /** Принудительная проверка (игнорировать кэш) */
   force?: boolean
 }
 
-/** Ответ на проверку номера (MAX) */
+/** Базовый ответ на проверку аккаунта (MAX, Telegram) */
 export interface CheckAccountResponse {
-  /** Есть ли аккаунт в MAX */
+  /** Есть ли аккаунт */
   exist: boolean
   /** Канонический chatId для отправки сообщений */
   chatId: string
   /** Данные из кэша GREEN-API */
   fromCache: boolean
 }
+
+/** Ответ на проверку аккаунта (Telegram) — расширенный */
+export interface CheckAccountTelegramResponse extends CheckAccountResponse {
+  /** Username пользователя (если есть) */
+  username?: string
+  /** Номер телефона в международном формате (integer) */
+  phoneNumber?: number
+}
+
+/** Объединённый тип ответа checkAccount для всех провайдеров */
+export type CheckAccountResponseUnion =
+  | CheckAccountResponse
+  | CheckAccountTelegramResponse
 
 /** Ответ на проверку номера (WhatsApp: checkWhatsApp) */
 export interface CheckWhatsAppResponse {
@@ -116,6 +131,13 @@ export interface CheckWhatsAppResponse {
   phoneNumber: string
   /** Данные из кэша */
   fromCache: boolean
+}
+
+/** Type guard для Telegram ответа */
+export function isTelegramCheckAccountResponse(
+  response: CheckAccountResponseUnion,
+): response is CheckAccountTelegramResponse {
+  return 'username' in response || 'phoneNumber' in response
 }
 
 /**
@@ -134,6 +156,25 @@ export interface NotificationBody {
     /** Тип инстанса: whatsapp, max, telegram */
     typeInstance: string
   }
+  /** Timestamp сообщения в секундах (Telegram: на верхнем уровне; WhatsApp/MAX: внутри messageData) */
+  timestamp?: number
+  /** Данные отправителя (Telegram: на верхнем уровне; WhatsApp/MAX: внутри messageData) */
+  senderData?: {
+    /** chatId отправителя */
+    chatId: string
+    /** Номер/ID отправителя */
+    sender: string
+    /** Имя отправителя */
+    senderName: string
+    /** Тип чата (Telegram: bot, private, group, supergroup) */
+    chatType?: string
+    /** Тип отправителя */
+    senderType?: string
+    /** Номер телефона (если есть) */
+    senderPhoneNumber?: number
+    /** Имя контакта */
+    senderContactName?: string
+  }
   /** Данные сообщения (если применимо к типу вебхука) */
   messageData?: {
     /** Тип сообщения: textMessage, imageMessage, ... */
@@ -142,11 +183,17 @@ export interface NotificationBody {
     textMessageData?: {
       /** Сам текст */
       textMessage: string
+      /** Поля форматирования (Telegram entities для markdown/HTML) */
+      entities?: Array<{ type: string; offset: number; length: number }>
+      /** Score пересылки */
+      forwardingScore?: number
+      /** Является ли пересланным */
+      isForwarded?: boolean
     }
-    /** Канонический chatId чата */
-    chatId: string
-    /** Данные отправителя */
-    senderData: {
+    /** Канонический chatId чата (может отсутствовать у Telegram ботов) */
+    chatId?: string
+    /** Данные отправителя (WhatsApp/MAX) */
+    senderData?: {
       /** chatId отправителя */
       chatId: string
       /** Номер/ID отправителя */

@@ -77,7 +77,7 @@ export function ProviderSettingsScreen() {
 
   /** Обработка отправки формы */
   const handleSubmit = useCallback(
-    (e: React.FormEvent) => {
+    (e: React.SubmitEvent) => {
       e.preventDefault()
       if (!validateForm()) return
 
@@ -243,7 +243,6 @@ export function ProviderSettingsScreen() {
                     errors.idInstance ? 'idinstance-error' : 'idinstance-hint'
                   }
                   aria-invalid={!!errors.idInstance}
-                  autoComplete="off"
                 />
                 {errors.idInstance && (
                   <p
@@ -271,7 +270,6 @@ export function ProviderSettingsScreen() {
                     errors.apiTokenInstance ? 'token-error' : 'token-hint'
                   }
                   aria-invalid={!!errors.apiTokenInstance}
-                  autoComplete="off"
                 />
                 {errors.apiTokenInstance && (
                   <p id="token-error" className={styles.errorText} role="alert">
