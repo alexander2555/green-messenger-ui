@@ -6,7 +6,7 @@ import styles from './ProviderSettingsScreen.module.css'
 const MESSENGER_OPTIONS = [
   { value: 'max' as const, label: 'MAX' },
   { value: 'whatsapp' as const, label: 'WhatsApp' },
-  { value: 'telegram' as const, label: 'Telegram (soon)' },
+  { value: 'telegram' as const, label: 'Telegram' },
 ] as const
 
 /** Валидация полей формы */
@@ -130,9 +130,10 @@ export function ProviderSettingsScreen() {
     [setActiveConnection],
   )
 
-  // Проверка, доступен ли выбранный провайдер (MAX и WhatsApp)
+  // Проверка, доступен ли выбранный провайдер (MAX, WhatsApp, Telegram)
   const isProviderAvailable = useMemo(
-    () => provider === 'max' || provider === 'whatsapp',
+    () =>
+      provider === 'max' || provider === 'whatsapp' || provider === 'telegram',
     [provider],
   )
 
@@ -178,11 +179,7 @@ export function ProviderSettingsScreen() {
                 aria-invalid={!!errors.provider}
               >
                 {MESSENGER_OPTIONS.map(opt => (
-                  <option
-                    key={opt.value}
-                    value={opt.value}
-                    disabled={opt.value === 'telegram'}
-                  >
+                  <option key={opt.value} value={opt.value}>
                     {opt.label}
                   </option>
                 ))}
@@ -195,9 +192,6 @@ export function ProviderSettingsScreen() {
                 >
                   {errors.provider}
                 </p>
-              )}
-              {(provider as string) === 'telegram' && (
-                <p className={styles.helperText}>Telegram — в разработке.</p>
               )}
             </div>
 

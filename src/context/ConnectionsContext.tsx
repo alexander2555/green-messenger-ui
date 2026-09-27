@@ -4,10 +4,11 @@ import {
   useState,
   useEffect,
   useCallback,
+  useMemo,
   type ReactNode,
 } from 'react'
 import type { Connection } from '../types'
-import { createProvider } from '../providers/MaxProvider'
+import { createProvider } from '../providers/providerFactory'
 
 /**
  * Значение контекста подключений.
@@ -138,14 +139,16 @@ export function ConnectionsProvider({ children }: { children: ReactNode }) {
     connections.find(c => c.id === activeConnectionId) ?? null
 
   // Создаём провайдер для активного подключения (если есть)
-  const activeProvider = activeConnection
-    ? createProvider(
-        activeConnection.provider,
-        activeConnection.apiUrl,
-        activeConnection.idInstance,
-        activeConnection.apiTokenInstance,
-      )
-    : null
+  // useMemo предотвращает пересоздание провайдера на каждом рендере
+  const activeProvider = useMemo(() => {
+    if (!activeConnection) return null
+    return createProvider(
+      activeConnection.provider,
+      activeConnection.apiUrl,
+      activeConnection.idInstance,
+      activeConnection.apiTokenInstance,
+    )
+  }, [activeConnection])
 
   const value: ConnectionsContextValue = {
     connections,
