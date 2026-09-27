@@ -77,11 +77,11 @@ export abstract class GreenApiProvider implements MessengerProvider {
 
   /**
    * Универсальный метод выполнения HTTP-запроса к GREEN-API.
-   * Добавляет токен в URL, устанавливает Content-Type: application/json,
-   * обрабатывает ошибки HTTP-статусов.
+   * Добавляет токен в URL перед query string (формат GREEN-API: /method/{token}?query).
+   * Устанавливает Content-Type: application/json, обрабатывает ошибки HTTP-статусов.
    * @template T - Тип ожидаемого ответа
    * @param method - HTTP метод (GET, POST, DELETE)
-   * @param path - Путь метода API (начинается с /, например /sendMessage/)
+   * @param path - Путь метода API (начинается с /, например /sendMessage/ или /receiveNotification/?receiveTimeout=25)
    * @param body - Тело запроса (для POST), будет сериализовано в JSON
    * @returns Promise с распаршенным JSON ответом типа T
    * @throws Error с описанием статуса и тела ответа при ошибке
@@ -91,8 +91,9 @@ export abstract class GreenApiProvider implements MessengerProvider {
     path: string,
     body?: unknown,
   ): Promise<T> {
-    // Токен добавляется в конец пути как часть URL (особенность GREEN-API)
-    const url = `${this.getBaseUrl()}${path}${this.apiTokenInstance}`
+    // Разделяем путь и query string, токен вставляется ПЕРЕД ? (формат GREEN-API)
+    const [pathname, search = ''] = path.split('?')
+    const url = `${this.getBaseUrl()}${pathname}${this.apiTokenInstance}${search ? `?${search}` : ''}`
     const response = await fetch(url, {
       method,
       headers: {
@@ -103,8 +104,15 @@ export abstract class GreenApiProvider implements MessengerProvider {
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => '')
+      console.error('[GreenApiProvider] Request failed:', {
+        url,
+        method,
+        status: response.status,
+        statusText: response.statusText,
+        body: errorText,
+      })
       throw new Error(
-        `GREEN-API error: ${response.status} ${response.statusText} - ${errorText}`,
+        `GREEN-API error: ${response.status} ${response.statusText} - ${errorText || 'No response body'}`,
       )
     }
 
