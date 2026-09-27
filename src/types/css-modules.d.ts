@@ -13,3 +13,9 @@ declare module '*.module.sass' {
   const classes: Record<string, string>
   export default classes
 }
+
+// Side-effect imports for global CSS (no CSS Modules)
+declare module '*.css' {
+  const content: string
+  export default content
+}
