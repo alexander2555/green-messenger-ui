@@ -13,7 +13,7 @@ React + TypeScript + Vite frontend for multi-provider messenger integration (Wha
 ## Commands
 
 ```bash
-npm install      # install dependencies
+npm i --legacy-peer-deps     # install dependencies
 npm run dev      # start dev server
 npm run build    # typecheck + production build
 npm run preview  # preview production build
